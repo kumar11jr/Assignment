@@ -55,7 +55,6 @@ export default function Home(){
       console.log("User registered successfully");
     } catch (error) {
       alert("Registration failed");
-      console.error("Registration failed", error);
     }
   };
 
@@ -67,7 +66,6 @@ export default function Home(){
       console.log("User logged in successfully");
     } catch (error) {
       alert("Login failed");
-      console.error("Login failed", error);
     }
   };
 
