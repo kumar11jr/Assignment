@@ -49,6 +49,7 @@ const ChatApp = () => {
       alert("User registered. Please log in.");
     } catch (error) {
       alert("Registration failed");
+      console.log(error);
     }
   };
 
@@ -59,6 +60,7 @@ const ChatApp = () => {
       setToken(response.data.token);
     } catch (error) {
       alert("Login failed");
+      console.log(error);
     }
   };
 
