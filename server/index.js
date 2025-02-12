@@ -42,6 +42,9 @@ wss.on("connection", (ws) => {
 
 app.post("/auth/register", (req, res) => {
   const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ message: "Username and password are required" });
+  }
   if (users.find((u) => u.username === username)) {
     return res.status(400).json({ message: "User already exists" });
   }
@@ -52,6 +55,9 @@ app.post("/auth/register", (req, res) => {
 
 app.post("/auth/login", (req, res) => {
   const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ message: "Username and password are required" });
+  }
   const user = users.find((u) => u.username === username);
   if (user && bcrypt.compareSync(password, user.password)) {
     const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "1h" });
