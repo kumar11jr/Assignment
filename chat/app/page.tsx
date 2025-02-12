@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import dynamic from "next/dynamic";
+// import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 
 interface Message {
@@ -9,7 +9,8 @@ interface Message {
   time: string;
 }
 
-const ChatApp = () => {
+
+export default function Home(){
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [token, setToken] = useState<string | null>(null);
@@ -20,6 +21,7 @@ const ChatApp = () => {
 
   useEffect(() => {
     setIsMounted(true);
+    console.log("Component mounted");
   }, []);
 
   useEffect(() => {
@@ -27,12 +29,14 @@ const ChatApp = () => {
       const savedToken = localStorage.getItem("token");
       if (savedToken) {
         setToken(savedToken);
+        console.log("Token loaded from localStorage");
       }
 
       // Load chat history from localStorage
       const savedChat = localStorage.getItem("chat");
       if (savedChat) {
         setChat(JSON.parse(savedChat));
+        console.log("Chat history loaded from localStorage");
       }
     }
   }, []);
@@ -40,34 +44,42 @@ const ChatApp = () => {
   useEffect(() => {
     if (chat.length > 0) {
       localStorage.setItem("chat", JSON.stringify(chat));
+      console.log("Chat history saved to localStorage");
     }
   }, [chat]);
 
   const handleRegister = async () => {
     try {
-      await axios.post("http://localhost:1337/auth/register", { username, password });
+      await axios.post("http://13.203.190.62:1337/auth/register", { username, password });
       alert("User registered. Please log in.");
+      console.log("User registered successfully");
     } catch (error) {
       alert("Registration failed");
+      console.error("Registration failed", error);
     }
   };
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post("http://localhost:1337/auth/login", { username, password });
+      const response = await axios.post("http://13.203.190.62:1337/auth/login", { username, password });
       localStorage.setItem("token", response.data.token);
       setToken(response.data.token);
+      console.log("User logged in successfully");
     } catch (error) {
       alert("Login failed");
+      console.error("Login failed", error);
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("chat");
     localStorage.removeItem("chat"); // Clear chat history on logout
     setToken(null);
+    setChat([]);
     setChat([]); // Reset chat state
     window.location.href = "/";
+    console.log("User logged out and chat cleared");
   };
 
   const clearChat = () => {
@@ -77,7 +89,7 @@ const ChatApp = () => {
 
   useEffect(() => {
     if (token) {
-      ws.current = new WebSocket("ws://localhost:1337");
+      ws.current = new WebSocket("ws://13.203.190.62:1337");
 
       ws.current.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -203,5 +215,4 @@ const ChatApp = () => {
   );
 };
 
-// Disable SSR to fix Next.js hydration issues
-export default dynamic(() => Promise.resolve(ChatApp), { ssr: false });
+
