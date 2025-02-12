@@ -45,7 +45,7 @@ const ChatApp = () => {
 
   const handleRegister = async () => {
     try {
-      await axios.post("http://localhost:1337/auth/register", { username, password });
+      await axios.post("http://13.203.190.62:1337/auth/register", { username, password });
       alert("User registered. Please log in.");
     } catch (error) {
       alert("Registration failed");
@@ -54,7 +54,7 @@ const ChatApp = () => {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post("http://localhost:1337/auth/login", { username, password });
+      const response = await axios.post("http://13.203.190.62:1337/auth/login", { username, password });
       localStorage.setItem("token", response.data.token);
       setToken(response.data.token);
     } catch (error) {
@@ -77,7 +77,7 @@ const ChatApp = () => {
 
   useEffect(() => {
     if (token) {
-      ws.current = new WebSocket("ws://localhost:1337");
+      ws.current = new WebSocket("ws://13.203.190.62:1337");
 
       ws.current.onmessage = (event) => {
         const data = JSON.parse(event.data);
