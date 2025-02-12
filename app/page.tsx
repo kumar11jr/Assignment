@@ -1,101 +1,207 @@
-import Image from "next/image";
+"use client";
+import { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 
-export default function Home() {
+interface Message {
+  text: string;
+  time: string;
+}
+
+const ChatApp = () => {
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [token, setToken] = useState<string | null>(null);
+  const [message, setMessage] = useState<string>("");
+  const [chat, setChat] = useState<Message[]>([]);
+  const ws = useRef<WebSocket | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedToken = localStorage.getItem("token");
+      if (savedToken) {
+        setToken(savedToken);
+      }
+
+      // Load chat history from localStorage
+      const savedChat = localStorage.getItem("chat");
+      if (savedChat) {
+        setChat(JSON.parse(savedChat));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (chat.length > 0) {
+      localStorage.setItem("chat", JSON.stringify(chat));
+    }
+  }, [chat]);
+
+  const handleRegister = async () => {
+    try {
+      await axios.post("http://localhost:1337/auth/register", { username, password });
+      alert("User registered. Please log in.");
+    } catch (error) {
+      alert("Registration failed");
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const response = await axios.post("http://localhost:1337/auth/login", { username, password });
+      localStorage.setItem("token", response.data.token);
+      setToken(response.data.token);
+    } catch (error) {
+      alert("Login failed");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("chat"); // Clear chat history on logout
+    setToken(null);
+    setChat([]); // Reset chat state
+    window.location.href = "/";
+  };
+
+  const clearChat = () => {
+    localStorage.removeItem("chat");
+    setChat([]);
+  };
+
+  useEffect(() => {
+    if (token) {
+      ws.current = new WebSocket("ws://localhost:1337");
+
+      ws.current.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "message") {
+          const newMessage = { text: data.message, time: new Date(data.timestamp).toLocaleTimeString() };
+          setChat((prevChat) => [...prevChat, newMessage]);
+        }
+      };
+
+      return () => {
+        ws.current?.close();
+      };
+    }
+  }, [token]);
+
+  const sendMessage = () => {
+    if (ws.current && message) {
+      ws.current.send(JSON.stringify({ type: "message", message }));
+      setMessage("");
+    }
+  };
+
+  if (!isMounted) return null;
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white px-6">
+      {!token ? (
+        <motion.div 
+          className="p-8 bg-gray-800 rounded-2xl shadow-lg w-full max-w-sm"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <h2 className="text-2xl font-bold text-center mb-4">Authentication</h2>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full p-3 bg-gray-700 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-3 bg-gray-700 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <div className="flex justify-between">
+            <motion.button
+              onClick={handleRegister}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+            >
+              Register
+            </motion.button>
+            <motion.button
+              onClick={handleLogin}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+            >
+              Login
+            </motion.button>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div 
+          className="p-6 bg-gray-800 rounded-2xl shadow-lg w-full max-w-lg"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <h2 className="text-2xl font-bold text-center mb-4">Chat</h2>
+          <div className="border border-gray-600 p-4 w-full h-80 overflow-auto rounded-lg bg-gray-900 shadow-inner">
+            {chat.map((msg, index) => (
+              <motion.div 
+                key={index}
+                className="p-2 my-2 bg-gray-700 rounded-lg w-fit max-w-[80%] shadow-md"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+              >
+                <span className="text-sm text-gray-400">{msg.time}</span>
+                <p className="text-lg">{msg.text}</p>
+              </motion.div>
+            ))}
+          </div>
+          <div className="mt-4 flex">
+            <input
+              type="text"
+              placeholder="Type a message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="w-full p-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            <motion.button
+              onClick={sendMessage}
+              className="ml-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+            >
+              Send
+            </motion.button>
+          </div>
+          <div className="flex justify-between mt-4">
+            <motion.button
+              onClick={clearChat}
+              className="w-[48%] px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+            >
+              Clear Chat
+            </motion.button>
+            <motion.button
+              onClick={handleLogout}
+              className="w-[48%] px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-all"
+              whileHover={{ scale: 1.05 }}
+            >
+              Logout
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
-}
+};
+
+// Disable SSR to fix Next.js hydration issues
+export default dynamic(() => Promise.resolve(ChatApp), { ssr: false });
